@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+*.log
+.env
+.env.local
+**/keys/*.pem
+*.pem
+
+# Terraform local state + working dir - see terraform/backend.tf
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/*.tfvars
+terraform/*.tfvars.json
+!terraform/.terraform.lock.hcl

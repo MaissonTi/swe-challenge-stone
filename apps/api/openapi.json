@@ -1,0 +1,1050 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "summary": "Liveness check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "status": "ok"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "summary": "Register a new user",
+        "description": "Always responds 204, even if the e-mail is already registered - the response never reveals whether an account already exists. Rate limit on this route is 10 requests/minute per client IP.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Registration accepted"
+          },
+          "400": {
+            "description": "Password does not meet the policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. The `Retry-After` header gives the number of seconds to wait. Default limit is 100 requests/minute per identity (user id when authenticated, client IP otherwise) and route.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "summary": "Log in with e-mail and password",
+        "description": "Issues an access token (15 min) and a refresh token (7 days). Rate limit on this route is 5 requests/minute per client IP - stricter than the default, since login is the classic brute-force target.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated",
+            "example": {
+              "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhY2Nlc3MtZXhhbXBsZSIsInR5cGUiOiJhY2Nlc3MifQ.SIGNATURE",
+              "refreshToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZWZyZXNoLWV4YW1wbGUiLCJ0eXBlIjoicmVmcmVzaCJ9.SIGNATURE"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponseDto"
+                },
+                "example": {
+                  "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhY2Nlc3MtZXhhbXBsZSIsInR5cGUiOiJhY2Nlc3MifQ.SIGNATURE",
+                  "refreshToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZWZyZXNoLWV4YW1wbGUiLCJ0eXBlIjoicmVmcmVzaCJ9.SIGNATURE"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials (same message for wrong e-mail or password)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. The `Retry-After` header gives the number of seconds to wait. Default limit is 100 requests/minute per identity (user id when authenticated, client IP otherwise) and route.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "summary": "Rotate a refresh token",
+        "description": "Single-use: the presented refresh token is invalidated and a new access/refresh pair is issued. Reusing an already-rotated refresh token is treated as theft and revokes the whole token family.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New token pair issued",
+            "example": {
+              "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhY2Nlc3MtZXhhbXBsZSIsInR5cGUiOiJhY2Nlc3MifQ.SIGNATURE",
+              "refreshToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZWZyZXNoLWV4YW1wbGUiLCJ0eXBlIjoicmVmcmVzaCJ9.SIGNATURE"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponseDto"
+                },
+                "example": {
+                  "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhY2Nlc3MtZXhhbXBsZSIsInR5cGUiOiJhY2Nlc3MifQ.SIGNATURE",
+                  "refreshToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZWZyZXNoLWV4YW1wbGUiLCJ0eXBlIjoicmVmcmVzaCJ9.SIGNATURE"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid, expired, or reused refresh token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. The `Retry-After` header gives the number of seconds to wait. Default limit is 100 requests/minute per identity (user id when authenticated, client IP otherwise) and route.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "summary": "Log out",
+        "description": "Revokes the current access token and, if provided, the refresh token.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Logged out"
+          },
+          "401": {
+            "description": "Missing, expired, or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. The `Retry-After` header gives the number of seconds to wait. Default limit is 100 requests/minute per identity (user id when authenticated, client IP otherwise) and route.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "summary": "Get the current authenticated user",
+        "description": "Returns the profile of the user the access token belongs to.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current user profile",
+            "example": {
+              "userId": "3f1c2d4e-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+              "email": "demo@stone.com.br",
+              "createdAt": "2026-01-15T12:34:56.000Z"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponseDto"
+                },
+                "example": {
+                  "userId": "3f1c2d4e-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+                  "email": "demo@stone.com.br",
+                  "createdAt": "2026-01-15T12:34:56.000Z"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. The `Retry-After` header gives the number of seconds to wait. Default limit is 100 requests/minute per identity (user id when authenticated, client IP otherwise) and route.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/products": {
+      "post": {
+        "operationId": "ProductsController_create",
+        "summary": "Create a product (active by default)",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created",
+            "example": {
+              "id": "3f1c2d4e-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+              "name": "Gaming Laptop 16GB",
+              "category": "ELECTRONICS",
+              "active": true,
+              "createdAt": "2026-01-15T12:34:56.000Z",
+              "updatedAt": "2026-01-15T12:34:56.000Z"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductHttpDto"
+                },
+                "example": {
+                  "id": "3f1c2d4e-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+                  "name": "Gaming Laptop 16GB",
+                  "category": "ELECTRONICS",
+                  "active": true,
+                  "createdAt": "2026-01-15T12:34:56.000Z",
+                  "updatedAt": "2026-01-15T12:34:56.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid category or missing fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. The `Retry-After` header gives the number of seconds to wait. Default limit is 100 requests/minute per identity (user id when authenticated, client IP otherwise) and route.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "products"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "ProductsController_list",
+        "summary": "List active products (paginated, filterable)",
+        "description": "Cursor-based pagination - pass the previous page's `nextCursor` back as `cursor` to get the next page. `name` matches a case-insensitive prefix, not a substring.",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque token from a previous page",
+            "schema": {}
+          },
+          {
+            "name": "name",
+            "required": false,
+            "in": "query",
+            "description": "Case-insensitive name prefix",
+            "schema": {}
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "ELECTRONICS",
+                "CLOTHING",
+                "HOME",
+                "BOOKS",
+                "TOYS",
+                "FOOD",
+                "OTHER"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of active products",
+            "example": {
+              "items": [
+                {
+                  "id": "3f1c2d4e-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+                  "name": "Gaming Laptop 16GB",
+                  "category": "ELECTRONICS",
+                  "active": true,
+                  "createdAt": "2026-01-15T12:34:56.000Z",
+                  "updatedAt": "2026-01-15T12:34:56.000Z"
+                }
+              ],
+              "nextCursor": "eyJwcm9kdWN0SWQiOiIzZjFjMmQ0ZS01YTZiLTRjN2QtOGU5Zi0wYTFiMmMzZDRlNWYifQ"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListProductsResponseDto"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "3f1c2d4e-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+                      "name": "Gaming Laptop 16GB",
+                      "category": "ELECTRONICS",
+                      "active": true,
+                      "createdAt": "2026-01-15T12:34:56.000Z",
+                      "updatedAt": "2026-01-15T12:34:56.000Z"
+                    }
+                  ],
+                  "nextCursor": "eyJwcm9kdWN0SWQiOiIzZjFjMmQ0ZS01YTZiLTRjN2QtOGU5Zi0wYTFiMmMzZDRlNWYifQ"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid category value",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. The `Retry-After` header gives the number of seconds to wait. Default limit is 100 requests/minute per identity (user id when authenticated, client IP otherwise) and route.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "products"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/products/{id}": {
+      "patch": {
+        "operationId": "ProductsController_update",
+        "summary": "Update a product, including deactivating it",
+        "description": "Deactivating (`active: false`) is distinct from deleting - the product stays in storage but drops out of the default listing.",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Product id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product updated",
+            "example": {
+              "id": "3f1c2d4e-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+              "name": "Gaming Laptop 16GB",
+              "category": "ELECTRONICS",
+              "active": false,
+              "createdAt": "2026-01-15T12:34:56.000Z",
+              "updatedAt": "2026-01-15T12:34:56.000Z"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductHttpDto"
+                },
+                "example": {
+                  "id": "3f1c2d4e-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+                  "name": "Gaming Laptop 16GB",
+                  "category": "ELECTRONICS",
+                  "active": false,
+                  "createdAt": "2026-01-15T12:34:56.000Z",
+                  "updatedAt": "2026-01-15T12:34:56.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No fields provided, or invalid field values",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No product with this id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. The `Retry-After` header gives the number of seconds to wait. Default limit is 100 requests/minute per identity (user id when authenticated, client IP otherwise) and route.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "products"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "ProductsController_delete",
+        "summary": "Permanently delete a product",
+        "description": "Physical removal, independent of `active`. Idempotent.",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Product id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Product deleted (or already gone)"
+          },
+          "401": {
+            "description": "Missing, expired, or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. The `Retry-After` header gives the number of seconds to wait. Default limit is 100 requests/minute per identity (user id when authenticated, client IP otherwise) and route.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "products"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Stone Challenge API",
+    "description": "Authentication (JWT RS256 with rotating refresh, reuse detection, and\nrevocation via a Redis blacklist) and a protected product catalog,\ncursor-paginated and filterable by category and name prefix.\n\nEvery route goes through a distributed rate limit (sliding window in\nRedis): exceeding it returns `429` with a `Retry-After` header.\nThe rationale behind each decision is in `docs/PRD.md`.",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "auth",
+      "description": "Registration, login, rotating refresh, logout, and user profile"
+    },
+    {
+      "name": "products",
+      "description": "CRUD and paginated/filterable catalog listing (protected route)"
+    },
+    {
+      "name": "health",
+      "description": "Liveness check (public route)"
+    }
+  ],
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local (dev)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "ErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "messages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "path",
+                "messages"
+              ]
+            }
+          }
+        },
+        "required": [
+          "statusCode",
+          "message"
+        ]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "pattern": "^\\S+$"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "TokenResponseDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accessToken",
+          "refreshToken"
+        ]
+      },
+      "RefreshDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "LogoutDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ProfileResponseDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "userId",
+          "email",
+          "createdAt"
+        ]
+      },
+      "CreateProductDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ELECTRONICS",
+              "CLOTHING",
+              "HOME",
+              "BOOKS",
+              "TOYS",
+              "FOOD",
+              "OTHER"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "category"
+        ]
+      },
+      "ProductHttpDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ELECTRONICS",
+              "CLOTHING",
+              "HOME",
+              "BOOKS",
+              "TOYS",
+              "FOOD",
+              "OTHER"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "active",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ListProductsResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "ELECTRONICS",
+                    "CLOTHING",
+                    "HOME",
+                    "BOOKS",
+                    "TOYS",
+                    "FOOD",
+                    "OTHER"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "category",
+                "active",
+                "createdAt",
+                "updatedAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "UpdateProductDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ELECTRONICS",
+              "CLOTHING",
+              "HOME",
+              "BOOKS",
+              "TOYS",
+              "FOOD",
+              "OTHER"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}
